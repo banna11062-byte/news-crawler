@@ -33,14 +33,13 @@ def extract_article_body(url):
             return el.get_text(separator=" ", strip=True)[:300]
     return ""
 
-def parse_engdaily(list_url, base_url):
+def parse_site(list_url, base_url, source_name):
     soup = fetch_page(list_url)
     if not soup:
         return []
 
     articles = []
-    # 기사 링크 전체 탐색
-    for a_tag in soup.select("a[href*='articleView']"):
+    for a_tag in soup.select("a[href*='articleView'], a[href*='article']"):
         title = a_tag.get_text(strip=True)
         href = a_tag.get("href", "")
         if not href.startswith("http"):
@@ -56,51 +55,7 @@ def parse_engdaily(list_url, base_url):
             continue
         if not has_keyword(title):
             continue
-
-        articles.append({
-            "title": title,
-            "url": url,
-            "date": "",
-            "summary": "",
-            "source": "엔지니어링데일리",
-            "topic": "",
-            "relevance": "",
-        })
-
-    # 중복 URL 제거
-    seen = set()
-    unique = []
-    for a in articles:
-        if a["url"] not in seen:
-            seen.add(a["url"])
-            unique.append(a)
-
-    logger.info(f"[엔지니어링데일리] {list_url} → {len(unique)}건")
-    return unique
-
-def parse_dnews(list_url, base_url):
-    soup = fetch_page(list_url)
-    if not soup:
-        return []
-
-    articles = []
-    for a_tag in soup.select("a[href*='article']"):
-        title = a_tag.get_text(strip=True)
-        href = a_tag.get("href", "")
-        if not href.startswith("http"):
-            url = urljoin(base_url, href)
-        else:
-            url = href
-
-        if not title or not url:
-            continue
-        if len(title) < 10:
-            continue
-        if is_duplicate(url):
-            continue
-        if not has_keyword(title):
-            continue
-        if "dnews.co.kr" not in url:
+        if base_url.replace("https://", "").replace("http://", "") not in url:
             continue
 
         articles.append({
@@ -108,7 +63,7 @@ def parse_dnews(list_url, base_url):
             "url": url,
             "date": "",
             "summary": "",
-            "source": "대한경제",
+            "source": source_name,
             "topic": "",
             "relevance": "",
         })
@@ -120,24 +75,16 @@ def parse_dnews(list_url, base_url):
             seen.add(a["url"])
             unique.append(a)
 
-    logger.info(f"[대한경제] {list_url} → {len(unique)}건")
+    logger.info(f"[{source_name}] {list_url} -> {len(unique)}건")
     return unique
-
-SITE_PARSERS = {
-    "엔지니어링데일리": parse_engdaily,
-    "대한경제": parse_dnews,
-}
 
 def crawl_all():
     all_articles = []
-    for site_name, site_cfg in SITES.items():
-        parser = SITE_PARSERS.get(site_name)
-        if not parser:
-            continue
-
+    for site_key, site_cfg in SITES.items():
+        source_name = site_cfg.get("name", site_key)
         site_articles = []
         for url in site_cfg["list_urls"]:
-            articles = parser(url, site_cfg["base_url"])
+            articles = parse_site(url, site_cfg["base_url"], source_name)
             site_articles.extend(articles)
             time.sleep(REQUEST_DELAY)
 
