@@ -46,7 +46,7 @@ KEYWORDS = [
 
 SCHEDULE_TIME = os.getenv("SCHEDULE_TIME", "08:00")
 DB_PATH = os.getenv("DB_PATH", "news_crawler.db")
-MAX_ARTICLES_PER_SITE = int(os.getenv("MAX_ARTICLES_PER_SITE", "10"))
+MAX_ARTICLES_PER_SITE = int(os.getenv("MAX_ARTICLES_PER_SITE", "3"))
 REQUEST_DELAY = float(os.getenv("REQUEST_DELAY", "1.5"))
 REQUEST_TIMEOUT = int(os.getenv("REQUEST_TIMEOUT", "15"))
 
