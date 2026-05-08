@@ -1,0 +1,36 @@
+name: 뉴스 크롤러
+
+on:
+  schedule:
+    - cron: '0 23 * * *'
+  workflow_dispatch:
+
+jobs:
+  crawl:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: 코드 가져오기
+      uses: actions/checkout@v3
+
+    - name: 파이썬 설치
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+
+    - name: 패키지 설치
+      run: pip install -r requirements.txt
+
+    - name: 크롤러 실행
+      env:
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        EMAIL_ADDRESS: ${{ secrets.EMAIL_ADDRESS }}
+        EMAIL_APP_PASSWORD: ${{ secrets.EMAIL_APP_PASSWORD }}
+        RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
+        SMTP_HOST: smtp.gmail.com
+        SMTP_PORT: 587
+        MAX_ARTICLES_PER_SITE: 50
+        REQUEST_DELAY: 1.5
+        REQUEST_TIMEOUT: 15
+        DB_PATH: news_crawler.db
+      run: python main.py
