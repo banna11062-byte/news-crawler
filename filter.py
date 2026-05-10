@@ -1,3 +1,4 @@
+import os
 import json
 import time
 import logging
@@ -5,7 +6,7 @@ import requests
 
 logger = logging.getLogger(__name__)
 
-GEMINI_API_KEY = "AIzaSyBVvmsGCUNK1jbUuWmiudB323VmW6FtbR8"
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
     "gemini-2.0-flash:generateContent"
@@ -35,14 +36,12 @@ def filter_articles(articles):
     if not articles:
         return []
 
-    # 기사를 1개씩 처리 (한도 안전)
     result = []
     for i, art in enumerate(articles):
         logger.info(f"필터링 중... ({i+1}/{len(articles)})")
         filtered = _filter_one(art, i)
         if filtered:
             result.append(filtered)
-        # 요청 사이 5초 대기 (분당 12회 = 안전)
         if i < len(articles) - 1:
             time.sleep(5)
 
