@@ -40,13 +40,19 @@ def extract_article_data(url):
             title = h_tag.get_text(strip=True)
 
     body = ""
-    for selector in ["div#article-view-content-div", "div.article-body",
-                     "div#articleBodyContents", "div.news_txt",
-                     "article", "div.view_con"]:
-        el = soup.select_one(selector)
-        if el:
-            body = el.get_text(separator=" ", strip=True)[:500]
-            break
+    og_desc = soup.find("meta", property="og:description")
+    if og_desc and og_desc.get("content"):
+        body = og_desc["content"].strip()
+
+    if not body:
+        for selector in ["div#article-view-content-div", "div.article-body",
+                         "div#articleBodyContents", "div.news_txt",
+                         "article", "div.view_con", "div.user-snip-content",
+                         "section.article-view", "div.article_view"]:
+            el = soup.select_one(selector)
+            if el:
+                body = el.get_text(separator=" ", strip=True)[:500]
+                break
 
     image = ""
     og_image = soup.find("meta", property="og:image")
