@@ -37,11 +37,11 @@ def build_card(art, is_first):
     return (
         '<div style="background:#fff;border:0.5px solid #E5E5E0;border-radius:12px;margin-bottom:14px;overflow:hidden;">'
         + image_html
-        + '<div style="padding:16px 18px;">'
-        + '<div style="font-size:11px;color:#EA6A1F;font-weight:500;margin-bottom:6px;">' + source + '</div>'
-        + '<div style="font-size:16px;font-weight:500;color:#2C2C2A;line-height:1.4;margin-bottom:8px;">' + title + '</div>'
-        + '<div style="font-size:13px;color:#5F5E5A;line-height:1.7;margin-bottom:12px;">' + summary + '</div>'
-        + '<a href="' + url + '" style="display:inline-block;background:#FAEEDA;color:#854F0B;padding:6px 14px;border-radius:6px;font-size:12px;font-weight:500;text-decoration:none;" target="_blank">기사 전문 보기 →</a>'
+        + '<div style="padding:18px 20px;">'
+        + '<div style="font-size:11px;color:#EA6A1F;font-weight:600;margin-bottom:8px;letter-spacing:0.3px;">' + source + '</div>'
+        + '<div style="font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.4;margin-bottom:10px;">' + title + '</div>'
+        + '<div style="font-size:13px;font-weight:400;color:#888780;line-height:1.7;margin-bottom:14px;">' + summary + '</div>'
+        + '<a href="' + url + '" style="display:inline-block;background:#FAEEDA;color:#854F0B;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;" target="_blank">기사 전문 보기 →</a>'
         + '</div></div>'
     )
 
