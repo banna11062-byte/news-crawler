@@ -29,7 +29,7 @@ jobs:
         RECIPIENT_EMAILS: ${{ secrets.RECIPIENT_EMAILS }}
         SMTP_HOST: smtp.gmail.com
         SMTP_PORT: 587
-        MAX_ARTICLES_PER_SITE: 3
+        MAX_ARTICLES_PER_SITE: 5
         REQUEST_DELAY: 1.5
         REQUEST_TIMEOUT: 15
         DB_PATH: news_crawler.db
