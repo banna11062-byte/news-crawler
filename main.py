@@ -37,6 +37,8 @@ def run(dry_run=False):
         if save_article(art):
             new.append(art)
             logger.info(f"  저장: [{art['source']}] {art['title'][:50]}")
+            logger.info(f"    본문: {art.get('summary','(없음)')[:100]}")
+            logger.info(f"    이미지: {art.get('image','(없음)')[:80]}")
 
     to_send = get_unsent_articles()
 
