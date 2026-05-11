@@ -3,7 +3,6 @@ import logging
 import requests
 from bs4 import BeautifulSoup
 from urllib.parse import urljoin
-from datetime import datetime, timedelta
 from config import SITES, KEYWORDS, HEADERS, REQUEST_DELAY, REQUEST_TIMEOUT, MAX_ARTICLES_PER_SITE
 from database import is_duplicate
 
@@ -22,25 +21,35 @@ def fetch_page(url):
 def has_keyword(text):
     return any(kw in text for kw in KEYWORDS)
 
-def is_recent(date_text):
-    """어제 또는 오늘 기사인지 확인"""
-    if not date_text:
-        return True  # 날짜 없으면 일단 포함
-    today = datetime.now().strftime("%Y-%m-%d")
-    yesterday = (datetime.now() - timedelta(days=1)).strftime("%Y-%m-%d")
-    return today in date_text or yesterday in date_text
-
-def extract_article_body(url):
+def extract_article_data(url):
     soup = fetch_page(url)
     if not soup:
-        return ""
+        return "", ""
+
+    body = ""
     for selector in ["div#article-view-content-div", "div.article-body",
                      "div#articleBodyContents", "div.news_txt",
                      "article", "div.view_con"]:
         el = soup.select_one(selector)
         if el:
-            return el.get_text(separator=" ", strip=True)[:300]
-    return ""
+            body = el.get_text(separator=" ", strip=True)[:500]
+            break
+
+    image = ""
+    og_image = soup.find("meta", property="og:image")
+    if og_image and og_image.get("content"):
+        image = og_image["content"]
+    else:
+        for selector in ["div#article-view-content-div img", "div.article-body img",
+                         "article img", "div.view_con img"]:
+            img_el = soup.select_one(selector)
+            if img_el and img_el.get("src"):
+                image = img_el["src"]
+                if not image.startswith("http"):
+                    image = urljoin(url, image)
+                break
+
+    return body, image
 
 def parse_site(list_url, base_url, source_name):
     soup = fetch_page(list_url)
@@ -67,29 +76,17 @@ def parse_site(list_url, base_url, source_name):
         if base_url.replace("https://", "").replace("http://", "") not in url:
             continue
 
-        # 날짜 추출
-        parent = a_tag.parent
-        date_el = None
-        for _ in range(5):
-            if parent is None:
-                break
-            date_el = parent.select_one("span.dates, em.dates, span.date, dd.txt-date, span.time")
-            if date_el:
-                break
-            parent = parent.parent
-        date = date_el.get_text(strip=True) if date_el else ""
-
         articles.append({
             "title": title,
             "url": url,
-            "date": date,
+            "date": "",
             "summary": "",
+            "image": "",
             "source": source_name,
             "topic": "",
             "relevance": "",
         })
 
-    # 중복 URL 제거
     seen = set()
     unique = []
     for a in articles:
@@ -97,7 +94,6 @@ def parse_site(list_url, base_url, source_name):
             seen.add(a["url"])
             unique.append(a)
 
-    # 최신 10개만
     unique = unique[:MAX_ARTICLES_PER_SITE]
     logger.info(f"[{source_name}] {list_url} -> {len(unique)}건")
     return unique
@@ -106,6 +102,8 @@ def crawl_all():
     all_articles = []
     for site_key, site_cfg in SITES.items():
         source_name = site_cfg.get("name", site_key)
+        if source_name != "엔지니어링데일리":
+            continue
         site_articles = []
         for url in site_cfg["list_urls"]:
             articles = parse_site(url, site_cfg["base_url"], source_name)
@@ -114,12 +112,13 @@ def crawl_all():
 
         for art in site_articles:
             if not art["summary"]:
-                art["summary"] = extract_article_body(art["url"])
+                body, image = extract_article_data(art["url"])
+                art["summary"] = body
+                art["image"] = image
                 time.sleep(REQUEST_DELAY)
 
         all_articles.extend(site_articles)
 
-    # 전체 합쳐서 최신 10개만
     all_articles = all_articles[:MAX_ARTICLES_PER_SITE]
     logger.info(f"총 {len(all_articles)}건 수집 완료")
     return all_articles
