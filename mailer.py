@@ -11,25 +11,37 @@ logger = logging.getLogger(__name__)
 def clean_summary(summary, title):
     if not summary:
         return ""
-    if "기자" in summary[:50] and "=" in summary[:50]:
-        eq_pos = summary.find("=")
-        if 0 < eq_pos < 50:
-            summary = summary[eq_pos+1:].strip()
-    if title and summary.startswith(title):
-        summary = summary[len(title):].strip()
-    return summary
+    
+    s = summary.strip()
+    
+    if s.startswith("(엔지니어링데일리)"):
+        s = s[len("(엔지니어링데일리)"):].strip()
+    
+    if "기자" in s[:60] and "=" in s[:60]:
+        eq_pos = s.find("=")
+        if 0 < eq_pos < 60:
+            s = s[eq_pos+1:].strip()
+    
+    if title and s.startswith(title):
+        s = s[len(title):].strip()
+    
+    return s.strip(".").strip()
 
 
 def build_card(art, is_first):
     image = art.get("image", "")
     image_html = ""
-    if image and is_first:
+    if image and is_first and "logo" not in image.lower():
         image_html = '<div style="width:100%;height:200px;overflow:hidden;background:#F1EFE8;"><img src="' + image + '" style="width:100%;height:100%;object-fit:cover;" alt=""></div>'
 
     title = art.get("title", "")
     summary = clean_summary(art.get("summary", ""), title)
     if len(summary) > 150:
         summary = summary[:150] + "..."
+    
+    summary_html = ""
+    if summary:
+        summary_html = '<div style="font-size:13px;font-weight:400;color:#888780;line-height:1.7;margin-bottom:14px;">' + summary + '</div>'
 
     source = art.get("source", "엔지니어링데일리")
     url = art["url"]
@@ -40,7 +52,7 @@ def build_card(art, is_first):
         + '<div style="padding:18px 20px;">'
         + '<div style="font-size:11px;color:#EA6A1F;font-weight:600;margin-bottom:8px;letter-spacing:0.3px;">' + source + '</div>'
         + '<div style="font-size:17px;font-weight:700;color:#1A1A1A;line-height:1.4;margin-bottom:10px;">' + title + '</div>'
-        + '<div style="font-size:13px;font-weight:400;color:#888780;line-height:1.7;margin-bottom:14px;">' + summary + '</div>'
+        + summary_html
         + '<a href="' + url + '" style="display:inline-block;background:#FAEEDA;color:#854F0B;padding:7px 16px;border-radius:6px;font-size:12px;font-weight:600;text-decoration:none;" target="_blank">기사 전문 보기 →</a>'
         + '</div></div>'
     )
