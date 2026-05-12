@@ -218,17 +218,29 @@ def crawl_all():
     logger.info(f"엔지니어링데일리: {len(engdaily_collected)}건 수집")
 
     google_collected = []
+    query_results = {}
     for query in GOOGLE_NEWS_QUERIES:
-        if len(google_collected) >= GOOGLE_NEWS_COUNT:
-            break
-        google_articles = parse_google_news(query)
-        for art in google_articles:
+        articles = parse_google_news(query)
+        query_results[query] = articles
+        time.sleep(REQUEST_DELAY)
+
+    used_urls = set()
+    round_idx = 0
+    while len(google_collected) < GOOGLE_NEWS_COUNT:
+        added = False
+        for query in GOOGLE_NEWS_QUERIES:
             if len(google_collected) >= GOOGLE_NEWS_COUNT:
                 break
-            if any(g["url"] == art["url"] for g in google_collected):
-                continue
-            google_collected.append(art)
-        time.sleep(REQUEST_DELAY)
+            articles = query_results.get(query, [])
+            if round_idx < len(articles):
+                art = articles[round_idx]
+                if art["url"] not in used_urls:
+                    used_urls.add(art["url"])
+                    google_collected.append(art)
+                    added = True
+        if not added:
+            break
+        round_idx += 1
 
     all_articles.extend(google_collected)
     logger.info(f"구글뉴스: {len(google_collected)}건 수집")
