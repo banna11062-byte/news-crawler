@@ -24,7 +24,7 @@ def fetch_xml(url):
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
         resp.raise_for_status()
-        return BeautifulSoup(resp.text, "xml")
+        return BeautifulSoup(resp.content, "lxml-xml")
     except Exception as e:
         logger.warning(f"XML 로딩 실패 [{url}]: {e}")
         return None
@@ -35,7 +35,6 @@ def has_keyword(text):
 
 
 def upgrade_image_url(url):
-    """이미지 URL을 원본 고해상도로 변환"""
     if not url:
         return ""
     url = url.replace("/thumb/", "/photo/")
