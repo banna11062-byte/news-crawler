@@ -1,9 +1,9 @@
 import time
 import logging
 import requests
+from urllib.parse import urljoin, quote
 from bs4 import BeautifulSoup
-from urllib.parse import urljoin
-from config import SITES, KEYWORDS, HEADERS, REQUEST_DELAY, REQUEST_TIMEOUT, MAX_ARTICLES_PER_SITE
+from config import SITES, GOOGLE_NEWS_QUERIES, KEYWORDS, HEADERS, REQUEST_DELAY, REQUEST_TIMEOUT, ENGDAILY_COUNT, GOOGLE_NEWS_COUNT
 from database import is_duplicate
 
 logger = logging.getLogger(__name__)
@@ -20,8 +20,30 @@ def fetch_page(url):
         return None
 
 
+def fetch_xml(url):
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT)
+        resp.raise_for_status()
+        return BeautifulSoup(resp.text, "xml")
+    except Exception as e:
+        logger.warning(f"XML 로딩 실패 [{url}]: {e}")
+        return None
+
+
 def has_keyword(text):
     return any(kw in text for kw in KEYWORDS)
+
+
+def upgrade_image_url(url):
+    """이미지 URL을 원본 고해상도로 변환"""
+    if not url:
+        return ""
+    url = url.replace("/thumb/", "/photo/")
+    url = url.replace("_v150.", ".")
+    url = url.replace("_v300.", ".")
+    url = url.replace("_v400.", ".")
+    url = url.replace("_v640.", ".")
+    return url
 
 
 def extract_article_data(url):
@@ -47,11 +69,10 @@ def extract_article_data(url):
     if not body:
         for selector in ["div#article-view-content-div", "div.article-body",
                          "div#articleBodyContents", "div.news_txt",
-                         "article", "div.view_con", "div.user-snip-content",
-                         "section.article-view", "div.article_view"]:
+                         "article", "div.view_con"]:
             el = soup.select_one(selector)
             if el:
-                body = el.get_text(separator=" ", strip=True)[:500]
+                body = el.get_text(separator=" ", strip=True)[:1000]
                 break
 
     image = ""
@@ -68,10 +89,11 @@ def extract_article_data(url):
                     image = urljoin(url, image)
                 break
 
+    image = upgrade_image_url(image)
     return title, body, image
 
 
-def parse_site(list_url, base_url, source_name):
+def parse_engdaily(list_url, base_url, source_name):
     soup = fetch_page(list_url)
     if not soup:
         return []
@@ -105,21 +127,70 @@ def parse_site(list_url, base_url, source_name):
             "relevance": "",
         })
 
-    articles = articles[:MAX_ARTICLES_PER_SITE * 2]
     logger.info(f"[{source_name}] {list_url} -> {len(articles)}건 후보")
+    return articles
+
+
+def parse_google_news(query):
+    rss_url = f"https://news.google.com/rss/search?q={quote(query)}&hl=ko&gl=KR&ceid=KR:ko"
+    soup = fetch_xml(rss_url)
+    if not soup:
+        return []
+
+    articles = []
+    items = soup.find_all("item")[:GOOGLE_NEWS_COUNT * 3]
+
+    for item in items:
+        title_el = item.find("title")
+        link_el = item.find("link")
+        desc_el = item.find("description")
+        source_el = item.find("source")
+
+        if not title_el or not link_el:
+            continue
+
+        title = title_el.get_text(strip=True)
+        url = link_el.get_text(strip=True)
+
+        if " - " in title:
+            parts = title.rsplit(" - ", 1)
+            title = parts[0].strip()
+
+        source_name = source_el.get_text(strip=True) if source_el else "구글뉴스"
+
+        summary = ""
+        if desc_el:
+            desc_html = desc_el.get_text(strip=True)
+            desc_soup = BeautifulSoup(desc_html, "html.parser")
+            summary = desc_soup.get_text(separator=" ", strip=True)[:500]
+
+        if is_duplicate(url):
+            continue
+
+        articles.append({
+            "title": title,
+            "url": url,
+            "date": "",
+            "summary": summary,
+            "image": "",
+            "source": source_name,
+            "topic": query,
+            "relevance": "",
+        })
+
+    logger.info(f"[구글뉴스: {query}] -> {len(articles)}건")
     return articles
 
 
 def crawl_all():
     all_articles = []
+
+    engdaily_collected = []
     for site_key, site_cfg in SITES.items():
         source_name = site_cfg.get("name", site_key)
-        if source_name != "엔지니어링데일리":
-            continue
-
         candidates = []
         for url in site_cfg["list_urls"]:
-            articles = parse_site(url, site_cfg["base_url"], source_name)
+            articles = parse_engdaily(url, site_cfg["base_url"], source_name)
             candidates.extend(articles)
             time.sleep(REQUEST_DELAY)
 
@@ -130,9 +201,8 @@ def crawl_all():
                 seen.add(a["url"])
                 unique.append(a)
 
-        filtered = []
         for art in unique:
-            if len(filtered) >= MAX_ARTICLES_PER_SITE:
+            if len(engdaily_collected) >= ENGDAILY_COUNT:
                 break
             title, body, image = extract_article_data(art["url"])
             if not title:
@@ -142,10 +212,27 @@ def crawl_all():
             art["title"] = title
             art["summary"] = body
             art["image"] = image
-            filtered.append(art)
+            engdaily_collected.append(art)
             time.sleep(REQUEST_DELAY)
 
-        all_articles.extend(filtered)
+    all_articles.extend(engdaily_collected)
+    logger.info(f"엔지니어링데일리: {len(engdaily_collected)}건 수집")
+
+    google_collected = []
+    for query in GOOGLE_NEWS_QUERIES:
+        if len(google_collected) >= GOOGLE_NEWS_COUNT:
+            break
+        google_articles = parse_google_news(query)
+        for art in google_articles:
+            if len(google_collected) >= GOOGLE_NEWS_COUNT:
+                break
+            if any(g["url"] == art["url"] for g in google_collected):
+                continue
+            google_collected.append(art)
+        time.sleep(REQUEST_DELAY)
+
+    all_articles.extend(google_collected)
+    logger.info(f"구글뉴스: {len(google_collected)}건 수집")
 
     logger.info(f"총 {len(all_articles)}건 수집 완료")
     return all_articles
