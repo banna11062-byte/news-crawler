@@ -30,6 +30,8 @@ jobs:
         SMTP_HOST: smtp.gmail.com
         SMTP_PORT: 587
         MAX_ARTICLES_PER_SITE: 5
+        ENGDAILY_COUNT: 3
+        GOOGLE_NEWS_COUNT: 5
         REQUEST_DELAY: 1.5
         REQUEST_TIMEOUT: 15
         DB_PATH: news_crawler.db
