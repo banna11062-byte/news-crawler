@@ -8,43 +8,20 @@ from config import EMAIL_ADDRESS, EMAIL_APP_PASSWORD, SMTP_HOST, SMTP_PORT, RECI
 logger = logging.getLogger(__name__)
 
 
-def clean_summary(summary, title):
-    if not summary:
-        return ""
-    
-    s = summary.strip()
-    
-    if s.startswith("(엔지니어링데일리)"):
-        s = s[len("(엔지니어링데일리)"):].strip()
-    
-    if "기자" in s[:60] and "=" in s[:60]:
-        eq_pos = s.find("=")
-        if 0 < eq_pos < 60:
-            s = s[eq_pos+1:].strip()
-    
-    if title and s.startswith(title):
-        s = s[len(title):].strip()
-    
-    return s.strip(".").strip()
-
-
 def build_card(art, is_first):
     image = art.get("image", "")
     image_html = ""
     if image and is_first and "logo" not in image.lower():
-        image_html = '<div style="width:100%;height:200px;overflow:hidden;background:#F1EFE8;"><img src="' + image + '" style="width:100%;height:100%;object-fit:cover;" alt=""></div>'
+        image_html = '<div style="width:100%;overflow:hidden;background:#F1EFE8;"><img src="' + image + '" style="width:100%;height:auto;display:block;" alt=""></div>'
 
     title = art.get("title", "")
-    summary = clean_summary(art.get("summary", ""), title)
-    if len(summary) > 150:
-        summary = summary[:150] + "..."
-    
+    summary = art.get("summary", "")
+    source = art.get("source", "")
+    url = art["url"]
+
     summary_html = ""
     if summary:
         summary_html = '<div style="font-size:13px;font-weight:400;color:#888780;line-height:1.7;margin-bottom:14px;">' + summary + '</div>'
-
-    source = art.get("source", "엔지니어링데일리")
-    url = art["url"]
 
     return (
         '<div style="background:#fff;border:0.5px solid #E5E5E0;border-radius:12px;margin-bottom:14px;overflow:hidden;">'
@@ -72,7 +49,7 @@ def build_html(articles):
 
     footer = (
         '<div style="background:#fff;padding:16px;text-align:center;color:#888780;font-size:11px;border-top:0.5px solid #E5E5E0;">'
-        + '선진레터 · 출처: 엔지니어링데일리<br>매일 오전 8시 자동 발송'
+        + '선진레터 · 출처: 엔지니어링데일리 외<br>매일 오전 8시 자동 발송'
         + '</div>'
     )
 
