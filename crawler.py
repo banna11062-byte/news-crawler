@@ -47,6 +47,16 @@ def upgrade_image_url(url):
     return url
 
 
+def resolve_google_news_url(url):
+    """구글 뉴스 URL을 실제 기사 URL로 변환"""
+    try:
+        resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT, allow_redirects=True)
+        return resp.url
+    except Exception as e:
+        logger.warning(f"URL 변환 실패: {e}")
+        return url
+
+
 def extract_article_data(url):
     soup = fetch_page(url)
     if not soup:
@@ -242,7 +252,9 @@ def crawl_all():
                 if art["url"] not in used_urls:
                     used_urls.add(art["url"])
                     try:
-                        _, _, image = extract_article_data(art["url"])
+                        real_url = resolve_google_news_url(art["url"])
+                        art["url"] = real_url
+                        _, _, image = extract_article_data(real_url)
                         art["image"] = image
                         time.sleep(REQUEST_DELAY)
                     except Exception as e:
