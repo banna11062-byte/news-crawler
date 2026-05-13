@@ -42,6 +42,8 @@ def upgrade_image_url(url):
     url = url.replace("_v300.", ".")
     url = url.replace("_v400.", ".")
     url = url.replace("_v640.", ".")
+    if url.startswith("http://"):
+        url = "https://" + url[7:]
     return url
 
 
@@ -217,25 +219,34 @@ def crawl_all():
     all_articles.extend(engdaily_collected)
     logger.info(f"엔지니어링데일리: {len(engdaily_collected)}건 수집")
 
-    google_collected = []
+    engdaily_missing = ENGDAILY_COUNT - len(engdaily_collected)
+    target_google_count = GOOGLE_NEWS_COUNT + max(0, engdaily_missing)
+
     query_results = {}
     for query in GOOGLE_NEWS_QUERIES:
         articles = parse_google_news(query)
         query_results[query] = articles
         time.sleep(REQUEST_DELAY)
 
+    google_collected = []
     used_urls = set()
     round_idx = 0
-    while len(google_collected) < GOOGLE_NEWS_COUNT:
+    while len(google_collected) < target_google_count:
         added = False
         for query in GOOGLE_NEWS_QUERIES:
-            if len(google_collected) >= GOOGLE_NEWS_COUNT:
+            if len(google_collected) >= target_google_count:
                 break
             articles = query_results.get(query, [])
             if round_idx < len(articles):
                 art = articles[round_idx]
                 if art["url"] not in used_urls:
                     used_urls.add(art["url"])
+                    try:
+                        _, _, image = extract_article_data(art["url"])
+                        art["image"] = image
+                        time.sleep(REQUEST_DELAY)
+                    except Exception as e:
+                        logger.warning(f"이미지 추출 실패: {e}")
                     google_collected.append(art)
                     added = True
         if not added:
