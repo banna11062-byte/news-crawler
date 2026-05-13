@@ -10,13 +10,15 @@ logger = logging.getLogger(__name__)
 
 def build_card(art, is_first):
     image = art.get("image", "")
+    source = art.get("source", "")
+    is_engdaily = "엔지니어링데일리" in source
+
     image_html = ""
-    if image and "logo" not in image.lower() and "snslogo" not in image.lower():
+    if image and is_engdaily and "logo" not in image.lower() and "snslogo" not in image.lower():
         image_html = '<div style="width:100%;overflow:hidden;background:#F1EFE8;"><img src="' + image + '" style="width:100%;height:auto;display:block;" alt=""></div>'
 
     title = art.get("title", "")
     summary = art.get("summary", "")
-    source = art.get("source", "")
     url = art["url"]
 
     summary_html = ""
