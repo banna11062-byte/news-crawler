@@ -37,18 +37,12 @@ def has_keyword(text):
 def upgrade_image_url(url):
     if not url:
         return ""
-    url = url.replace("/thumb/", "/photo/")
-    url = url.replace("_v150.", ".")
-    url = url.replace("_v300.", ".")
-    url = url.replace("_v400.", ".")
-    url = url.replace("_v640.", ".")
     if url.startswith("http://"):
         url = "https://" + url[7:]
     return url
 
 
 def resolve_google_news_url(url):
-    """구글 뉴스 URL을 실제 기사 URL로 변환"""
     try:
         resp = requests.get(url, headers=HEADERS, timeout=REQUEST_TIMEOUT, allow_redirects=True)
         return resp.url
